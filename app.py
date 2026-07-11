@@ -25,7 +25,7 @@ SYSTEM_PROMPT = (
     "1. ENFOQUE INTEGRADO (PROYECTO-FINANZAS): Vincula siempre las fases, EDT o entregables del proyecto con su impacto financiero directo (CapEx, OpEx, ROI, VAN/TIR, control de desviaciones).\n"
     "2. DIAGNÓSTICO ESTRUCTURADO: Desglosa los problemas identificando causas raíz, cuellos de botella en la gestión, ruta crítica afectada y riesgos asociados. Usa datos realistas.\n"
     "3. MARCO METODOLÓGICO Y RENTABILIDAD: Justifica tus propuestas utilizando frameworks reconocidos (PMBOK, Scrum, Lean, Six Sigma) combinados con ratios analíticos de rentabilidad.\n"
-    "4. ENTREGABLES ACCIONABLES: Presenta recomendaciones priorizadas acompañadas de herramientas de gestión explícitas (matrices, cronogramas, historias de usuario) y métricas claras de éxito.\n\n"
+    "4. ENTREGABLES ACCIONABLES: Presenta recomendaciones priorizadas acompañadas de herramientas de gestión explictas (matrices, cronogramas, historias de usuario) y métricas claras de éxito.\n\n"
     "CONSTRICCIONES DE COMPORTAMIENTO:\n"
     "- Adopta un tono profesional, ejecutivo, analítico y corporativo.\n"
     "- Sé directo, objetivo y preciso en los cálculos o estimaciones conceptuales. No utilices generalidades vacías.\n"
@@ -42,17 +42,37 @@ SYSTEM_PROMPT = (
     "## [Subtítulo con los próximos pasos ejecutivos, EDT/WBS, historias de usuario o cronogramas secuenciales]"
 )
 
-# Colocamos el decorador justo encima de la función que interactúa con el modelo
+# FUNCIÓN MODIFICADA CON CORRECCIÓN DE HISTORIAL
 def responder(mensaje, historial):
     mensajes_api = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-    # Construcción limpia del historial para la API
-    for usuario, asistente in historial:
-        if usuario:
-            mensajes_api.append({"role": "user", "content": usuario})
-        if asistente:
-            mensajes_api.append({"role": "assistant", "content": asistente})
+    # Adaptación segura del historial de Gradio para la API de Hugging Face
+    for elemento in historial:
+        # Caso 1: Gradio moderno pasa el historial como diccionarios {'role': '...', 'content': '...'}
+        if isinstance(elemento, dict):
+            role = elemento.get("role")
+            content = elemento.get("content")
+            if role in ["user", "assistant"] and content:
+                mensajes_api.append({"role": role, "content": content})
+        
+        # Caso 2: Gradio antiguo o personalizado pasa tuplas/listas
+        elif isinstance(elemento, (list, tuple)):
+            # Si tiene el formato esperado (usuario, asistente)
+            if len(elemento) == 2:
+                usuario, asistente = elemento
+                if usuario:
+                    mensajes_api.append({"role": "user", "content": usuario})
+                if asistente:
+                    mensajes_api.append({"role": "assistant", "content": asistente})
+            # Si viene con 4 elementos (metadatos de Gradio), extraemos los dos primeros
+            elif len(elemento) >= 2:
+                usuario, asistente = elemento[0], elemento[1]
+                if usuario:
+                    mensajes_api.append({"role": "user", "content": usuario})
+                if asistente:
+                    mensajes_api.append({"role": "assistant", "content": asistente})
 
+    # Añadimos el último mensaje del usuario
     mensajes_api.append({"role": "user", "content": mensaje})
 
     respuesta_completa = ""
