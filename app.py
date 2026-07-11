@@ -5,12 +5,14 @@ from weasyprint import HTML
 
 # Conexión con su secreto HF
 HF_TOKEN = os.getenv("HF_TOKEN")
+
+# Optimizamos a Gemma 2 9B (puedes cambiarlo si prefieres mantener Llama 3)
 MODELO_ACTIVO = "Qwen/Qwen2.5-72B-Instruct"
 
 # Inicializar el cliente de inferencia
 client = InferenceClient(MODELO_ACTIVO, token=HF_TOKEN)
 
-# System Prompt estructurado
+# System Prompt estructurado según tus directrices de negocio y financieras
 SYSTEM_PROMPT = (
     "Eres Yaneth-IA, una Inteligencia Artificial de Elite experta en Gestión de Proyectos, "
     "y Análisis Financiero.\n\n"
@@ -44,18 +46,27 @@ SYSTEM_PROMPT = (
 def procesar_historial_api(historial):
     mensajes_api = [{"role": "system", "content": SYSTEM_PROMPT}]
     for elemento in historial:
+        # Caso 1: Gradio moderno pasa el historial como diccionarios
         if isinstance(elemento, dict):
             role = elemento.get("role")
             content = elemento.get("content")
             if role in ["user", "assistant"] and content:
                 mensajes_api.append({"role": role, "content": content})
+        
+        # Caso 2: Gradio antiguo o personalizado pasa tuplas/listas
         elif isinstance(elemento, (list, tuple)) and len(elemento) >= 2:
             usuario, asistente = elemento[0], elemento[1]
-            if usuario: mensajes_api.append({"role": "user", "content": usuario})
-            if asistente: mensajes_api.append({"role": "assistant", "content": asistente})
+            if usuario: 
+                mensajes_api.append({"role": "user", "content": usuario})
+            if asistente: 
+                mensajes_api.append({"role": "assistant", "content": asistente})
     return mensajes_api
 
 def responder(mensaje, historial):
+    if not mensaje.strip():
+        yield historial
+        return
+
     mensajes_api = procesar_historial_api(historial)
     mensajes_api.append({"role": "user", "content": mensaje})
 
@@ -88,7 +99,7 @@ def responder(mensaje, historial):
             historial.append({"role": "assistant", "content": error_msg})
         yield historial
 
-# FUNCIÓN CRÍTICA: EXPORTACIÓN A PDF CORPORATIVO CON WEASYPRINT
+# EXPORTACIÓN A PDF CORPORATIVO CON WEASYPRINT
 def exportar_a_pdf(historial):
     if not historial:
         return None
@@ -182,7 +193,7 @@ def exportar_a_pdf(historial):
             <h1>MINUTA Y REPORTE CONSULTIVO | YANETH-IA</h1>
             <p>Consultoría en Gestión de Proyectos, PMO y Análisis Financiero de Inversiones</p>
         </div>
-    ```
+    """
     
     # Procesamos cada elemento del historial y lo convertimos a HTML estructurado
     for elemento in historial:
@@ -223,24 +234,45 @@ with gr.Blocks(title="Yaneth-IA Executive Suite") as demo:
     gr.Markdown("Desarrollado por: Prof. Víctor Campos | CI V-8270225")
     
     chatbot = gr.Chatbot(type="messages", label="Mesa de Trabajo Consultiva")
-    msg = gr.Textbox(placeholder="Escribe tu consulta sobre PMO, CapEx, OpEx, EDT o riesgos aquí...", label="Entrada de Consulta")
     
+    # Agrupamos la entrada de texto para que se vea ordenada
     with gr.Row():
-        btn_enviar = gr.Button("Enviar Consulta", variant="primary")
-        btn_limpiar = gr.Button("Limpiar Chat")
-        # El componente de descarga de archivos de Gradio
-        btn_pdf = gr.Button("📄 Exportar Minuta/Reporte a PDF", variant="secondary")
+        msg = gr.Textbox(
+            placeholder="Escribe tu consulta sobre PMO, CapEx, OpEx, EDT o riesgos aquí...", 
+            label="Entrada de Consulta",
+            scale=4
+        )
+    
+    # Fila de botones de control y acción
+    with gr.Row():
+        btn_enviar = gr.Button("Enviar Consulta", variant="primary", scale=1)
+        btn_limpiar = gr.Button("Limpiar Chat", scale=1)
+    
+    # Separador visual para el área de exportación
+    gr.Markdown("---")
+    gr.Markdown("### 📄 Opciones de Exportación Corporativa")
+    
+    # Colocamos el botón de PDF y el cuadro de descarga uno al lado del otro
+    with gr.Row():
+        btn_pdf = gr.Button("Formatear y Exportar Minuta a PDF", variant="secondary")
         archivo_descarga = gr.File(label="Descargar Reporte PDF Generado", interactive=False)
         
-    # Acciones de la interfaz
-    msg.submit(responder, [msg, chatbot], chatbot)
-    btn_enviar.click(responder, [msg, chatbot], chatbot)
-    btn_limpiar.click(lambda: None, None, chatbot, queue=False)
+    # Función auxiliar para limpiar la caja de texto tras enviar el mensaje
+    def limpiar_entrada():
+        return ""
+
+    # Acciones de la interfaz (Enviar con Click o con Enter)
+    msg.submit(responder, [msg, chatbot], chatbot).then(limpiar_entrada, None, msg)
+    btn_enviar.click(responder, [msg, chatbot], chatbot).then(limpiar_entrada, None, msg)
+    
+    # Acción para reiniciar el tablero
+    btn_limpiar.click(lambda: [], None, chatbot, queue=False)
     
     # Evento para generar y descargar el PDF
     btn_pdf.click(exportar_a_pdf, inputs=[chatbot], outputs=[archivo_descarga])
 
 if __name__ == "__main__":
+    # CONFIGURACIÓN OBLIGATORIA PARA RENDER
     demo.launch(
         server_name="0.0.0.0", 
         server_port=10000,
