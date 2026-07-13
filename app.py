@@ -5,8 +5,8 @@ from huggingface_hub import InferenceClient
 # Conexión con su secreto HF
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-# Optimizamos a Gemma 2 9B (puedes cambiarlo si prefieres mantener Llama 3)
-MODELO_ACTIVO = "google/gemma-2-27b-it"
+# Optimizamos modelo activo
+MODELO_ACTIVO = "Qwen/Qwen3.6-27B"
 
 # Inicializar el cliente de inferencia
 client = InferenceClient(MODELO_ACTIVO, token=HF_TOKEN)
