@@ -92,7 +92,7 @@ def responder(mensaje, historial):
 demo = gr.ChatInterface(
     fn=responder,
     title="Yaneth-IA: Consultor en Gestión de Proyectos y Análisis Financiero.",
-    description="Soy Yaneth IA, desarrollada por: Prof. Víctor Campos | CI V-8270225.",
+    description="SSoy Yaneth IA, una Inteligencia Artificial, diseñada por: Prof. Víctor Campos | CI V-8270225.",
     examples=[
         ["Análisis de desvíos: CPI 0.82 y SPI 1.13."],
         ["Viabilidad para migrar infraestructura a Cloud."],
